@@ -1,0 +1,15 @@
+# Core — required for all functionality
+spotipy>=2.23.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+tqdm>=4.66.0
+
+# Optional — only needed for the interactive setup wizard (setup_wizard.py)
+# questionary>=2.0.1   # pip install questionary
+
+# Optional metadata resolvers (install to enable those sources)
+# tidalapi>=0.7.0       # pip install tidalapi      (Tidal)
+# ytmusicapi>=1.6.0     # pip install ytmusicapi    (YouTube Music)
+
+# Optional lyrics plugins (install to enable YouTube captions)
+# yt-dlp>=2024.1.0      # pip install yt-dlp

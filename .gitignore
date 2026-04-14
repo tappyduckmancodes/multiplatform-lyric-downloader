@@ -1,0 +1,32 @@
+# Credentials — never commit your actual config
+.env
+
+# Runtime cache (session tokens, spotipy OAuth)
+.cache/
+
+# Logs
+logs/
+
+# Output lyrics folder (user data)
+Lyrics/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
