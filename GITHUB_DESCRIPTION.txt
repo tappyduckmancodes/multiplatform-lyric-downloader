@@ -1,0 +1,17 @@
+# GitHub Repository Description (140 chars max)
+Download synced .lrc lyric files from Spotify, Deezer, Musixmatch, LRCLIB & YouTube. Organized by Artist/Album. Windows/macOS/Linux.
+
+# Topics/Tags (add these to the repo)
+lyrics lrc synced-lyrics spotify deezer musixmatch youtube yt-dlp lrclib music python downloader musicbee plex
+
+# About section text
+A cross-platform CLI tool that downloads time-synced .lrc lyric files for your music library.
+Fetches from a 5-source waterfall: Spotify → Deezer → LRCLIB → Musixmatch → YouTube captions.
+Output is organized into Artist/Album/Track.lrc folders compatible with MusicBee, Plex, Kodi,
+Poweramp, and any LRC-aware media player.
+
+Supports: track, album, playlist, and artist discography downloads from Spotify, Deezer, YouTube,
+and YouTube Music URLs. Automatic source fallback with full logging. Cross-platform: Windows
+(CMD/PowerShell), macOS, Linux, Git Bash.
+
+Complete rewrite of spotify-lyric-downloader — same output format, no browser automation required.
