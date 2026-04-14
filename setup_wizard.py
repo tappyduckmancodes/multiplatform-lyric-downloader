@@ -680,6 +680,84 @@ def show_summary(chosen_resolvers: list[str], chosen_plugins: list[str], env: di
     print()
 
 
+def step_spotify_oauth(env: dict) -> None:
+    """
+    Optional Step 4: run the Spotify OAuth browser flow and cache the user token.
+    Enables personal/algorithmic playlists (Daily Mix, Discover Weekly, daylist).
+    """
+    client_id     = env.get("SPOTIFY_CLIENT_ID", "").strip()
+    client_secret = env.get("SPOTIFY_CLIENT_SECRET", "").strip()
+    redirect_uri  = env.get("SPOTIFY_REDIRECT_URI", "").strip()
+
+    clear()
+    header("Step 4 (Optional) -- Personal Playlist Access", "OAuth Setup")
+    print("  Personalized Spotify playlists (Daily Mix, Discover Weekly, daylist) are")
+    print("  private playlists tied to your account. They need a user OAuth token,")
+    print("  which is different from your API keys.")
+    print()
+
+    if not (client_id and client_secret):
+        print("  Spotify API keys are not configured — set them up first.")
+        print()
+        input("  Press Enter to skip...")
+        return
+
+    if not redirect_uri:
+        print("  No Redirect URI is configured.")
+        print("  Re-run the wizard, set SPOTIFY_REDIRECT_URI, and then come back here.")
+        print()
+        input("  Press Enter to skip...")
+        return
+
+    print(f"  Redirect URI: {redirect_uri}")
+    print()
+    print("  This opens your browser once. After you authorize, your browser will")
+    print("  redirect to that URI — paste the full redirect URL back here.")
+    print()
+
+    if not ask_confirm("  Set up personal playlist access now?", default=False):
+        print()
+        return
+
+    print()
+    print("  Starting OAuth flow...")
+    print()
+
+    try:
+        import spotipy
+        from spotipy.oauth2 import SpotifyOAuth
+        from pathlib import Path as _Path
+
+        _Path(".cache").mkdir(exist_ok=True)
+        auth = SpotifyOAuth(
+            client_id=client_id,
+            client_secret=client_secret,
+            redirect_uri=redirect_uri,
+            scope="user-library-read user-read-currently-playing user-read-playback-state",
+            cache_path=".cache/spotipy",
+            open_browser=True,
+        )
+        sp = spotipy.Spotify(auth_manager=auth)
+        user = sp.me()
+        display_name = (user.get("display_name") or user.get("id") or "unknown") if user else "unknown"
+        print(f"  Authorized as: {display_name}")
+        print()
+        print("  Personal playlist access is now enabled.")
+        print("  Token cached at .cache/spotipy — refreshes automatically.")
+        print()
+    except ImportError:
+        print("  spotipy is not installed. Run: pip install spotipy")
+        print()
+    except Exception as e:
+        print(f"  OAuth setup failed: {e}")
+        print()
+        print("  You can retry anytime by running: python setup_wizard.py")
+        print("  and selecting 'Set up personal playlist access'.")
+        print()
+
+    input("  Press Enter to continue...")
+
+
 # -- Main ----------------------------------------------------------------------
 
 def install_optional_sources():
@@ -777,7 +855,14 @@ def main():
         print("  Existing configuration found.")
         choice = ask_select(
             "What would you like to do?",
-            ["Re-run full setup wizard", "Edit credentials for one service", "Edit priority order", "Install optional sources", "Exit"],
+            [
+                "Re-run full setup wizard",
+                "Edit credentials for one service",
+                "Edit priority order",
+                "Set up personal playlist access",
+                "Install optional sources",
+                "Exit",
+            ],
         )
         if not choice or choice == "Exit":
             sys.exit(0)
@@ -786,6 +871,9 @@ def main():
             return
         if choice == "Edit priority order":
             _quick_edit_order(env)
+            return
+        if choice == "Set up personal playlist access":
+            step_spotify_oauth(env)
             return
         if choice == "Install optional sources":
             install_optional_sources()
@@ -805,6 +893,10 @@ def main():
         sys.exit(0)
 
     env = step_configure_credentials(chosen_resolvers, chosen_plugins, env)
+
+    # Optional: OAuth for personal Spotify playlists (Daily Mix, Discover Weekly, daylist)
+    if "Spotify" in chosen_resolvers:
+        step_spotify_oauth(env)
 
     env["RESOLVER_ORDER"] = ",".join(chosen_resolvers)
     env["PLUGIN_ORDER"]   = ",".join(chosen_plugins)
