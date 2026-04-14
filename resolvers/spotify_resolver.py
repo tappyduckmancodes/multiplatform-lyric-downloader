@@ -4,8 +4,10 @@ resolvers/spotify_resolver.py -- Metadata resolver for Spotify URLs.
 Handles: open.spotify.com URLs, spotify: URIs, --playing, --liked
 """
 
+import json
 import logging
 import re
+from pathlib import Path
 from typing import Generator
 
 import spotipy
@@ -300,23 +302,80 @@ class SpotifyResolver(BaseResolver):
         except Exception as e:
             logger.error("Album fetch failed: %s", e)
 
+    def _oauth_cache_exists(self) -> bool:
+        """Return True if a completed OAuth token cache exists at .cache/spotipy."""
+        cache = Path(".cache/spotipy")
+        if not cache.exists():
+            return False
+        try:
+            data = json.loads(cache.read_text(encoding="utf-8"))
+            return bool(data.get("refresh_token") or data.get("access_token"))
+        except Exception:
+            return False
+
+    def _iter_playlist_items(self, sp, playlist_id):
+        """Yield TrackInfo for every non-null track in a playlist, paginating automatically."""
+        results = sp.playlist_items(
+            playlist_id,
+            fields="items(track(id,name,artists,album,duration_ms,track_number,disc_number)),next",
+            limit=100,
+        )
+        while results:
+            for item in results["items"]:
+                t = item.get("track")
+                if t and t.get("id"):
+                    yield _to_info(t)
+            results = sp.next(results) if results["next"] else None
+
     def _playlist_tracks(self, sp, playlist_id):
+        # ── Step 1: fetch playlist metadata (catches 404 before we start iterating) ──
         try:
             pl = sp.playlist(playlist_id, fields="name")
-            logger.info("Spotify playlist: %s", pl["name"])
-            results = sp.playlist_items(
-                playlist_id,
-                fields="items(track(id,name,artists,album,duration_ms,track_number,disc_number)),next",
-                limit=100,
-            )
-            while results:
-                for item in results["items"]:
-                    t = item.get("track")
-                    if t and t.get("id"):
-                        yield _to_info(t)
-                results = sp.next(results) if results["next"] else None
+        except spotipy.SpotifyException as e:
+            if e.http_status == 404:
+                # Personal/algorithmic playlists (Daily Mix, Discover Weekly, daylist)
+                # are private — Client Credentials can't access them. Try OAuth if cached.
+                if getattr(self, "_redirect_uri", "") and self._oauth_cache_exists():
+                    logger.info(
+                        "Playlist 404 with app credentials — retrying with OAuth token..."
+                    )
+                    try:
+                        sp_oauth = self.get_oauth_client()
+                        pl = sp_oauth.playlist(playlist_id, fields="name")
+                        logger.info("Spotify playlist (OAuth): %s", pl["name"])
+                        yield from self._iter_playlist_items(sp_oauth, playlist_id)
+                        return
+                    except Exception as oauth_err:
+                        logger.debug("OAuth playlist retry failed: %s", oauth_err)
+                # Check if this looks like a Spotify-generated algorithmic playlist
+                # (IDs starting with 37i9 — Daily Mix, Discover Weekly, daylist, etc.)
+                is_algorithmic = playlist_id.startswith("37i9")
+                if is_algorithmic:
+                    logger.error(
+                        "Playlist not accessible (404). Spotify's algorithmic playlists "
+                        "(Daily Mix, Discover Weekly, daylist, mixes) are dynamically "
+                        "generated and cannot be accessed via the Spotify API — "
+                        "this is a Spotify limitation, not a credentials issue."
+                    )
+                else:
+                    logger.error(
+                        "Playlist not found (404). If this is a private playlist, "
+                        "run: python setup_wizard.py → 'Set up personal playlist access' "
+                        "to enable OAuth access for your own private playlists."
+                    )
+                return
+            logger.error("Playlist fetch failed: %s", e)
+            return
         except Exception as e:
             logger.error("Playlist fetch failed: %s", e)
+            return
+
+        # ── Step 2: iterate tracks ────────────────────────────────────────────────
+        logger.info("Spotify playlist: %s", pl["name"])
+        try:
+            yield from self._iter_playlist_items(sp, playlist_id)
+        except Exception as e:
+            logger.error("Playlist fetch error during pagination: %s", e)
 
     def _artist_tracks(self, sp, artist_id):
         try:

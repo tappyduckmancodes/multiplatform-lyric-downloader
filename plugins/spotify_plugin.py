@@ -6,6 +6,7 @@ Auth is handled externally by SpotifyAuth and passed in via setup().
 """
 
 import logging
+import time
 import requests
 from pathlib import Path
 
@@ -25,6 +26,7 @@ LYRICS_URL = (
 class SpotifyPlugin(LyricsPlugin):
     NAME = "Spotify"
     PRIORITY = 10
+    _rate_limited_until: float = 0.0  # class-level: shared across all instances in a run
     CONFIG = [
         PluginConfig(
             name="Spotify Bearer Token",
@@ -67,6 +69,16 @@ class SpotifyPlugin(LyricsPlugin):
         self._search_fn = fn
 
     def fetch(self, track: TrackInfo) -> str | None:
+        # Global 429 cooldown: if we were rate-limited recently, skip immediately
+        now = time.time()
+        if now < SpotifyPlugin._rate_limited_until:
+            remaining = int(SpotifyPlugin._rate_limited_until - now)
+            logger.debug(
+                "Spotify lyrics: skipping '%s' — rate limited, %ds cooldown remaining",
+                track.title, remaining,
+            )
+            return None
+
         if not self._auth_headers:
             logger.warning("Spotify lyrics: no auth headers — token missing or not injected")
             return None
@@ -180,6 +192,14 @@ class SpotifyPlugin(LyricsPlugin):
                 return None
             if resp.status_code == 404:
                 logger.debug("Spotify lyrics: 404 — no lyrics available for '%s'", track.title)
+                return None
+            if resp.status_code == 429:
+                retry_after = int(resp.headers.get("Retry-After", 60))
+                SpotifyPlugin._rate_limited_until = time.time() + retry_after
+                logger.warning(
+                    "Spotify lyrics: 429 rate limited — skipping remaining tracks for %ds",
+                    retry_after,
+                )
                 return None
             resp.raise_for_status()
             data = resp.json()
