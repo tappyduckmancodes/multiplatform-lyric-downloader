@@ -1,5 +1,7 @@
 # multiplatform-lyric-downloader
 
+AI Disclosure: Claude Code was used as assistance for this project.
+
 Download synced (timestamped) `.lrc` lyric files from Spotify, Deezer, Musixmatch, LRCLIB, and YouTube — organized into `Artist\Album\Track.lrc` folders compatible with MusicBee, Plex, Kodi, Poweramp, and most LRC-aware players.
 
 > **Migrating from [spotify-lyric-downloader](https://github.com/tappyduckmancodes/spotify-lyric-downloader)?**
@@ -196,10 +198,10 @@ Lyrics/
 │       └── 02 Give Me Everything ft. Ne-Yo, Afrojack, Nayer.lrc
 ├── Sabrina Carpenter/
 │   └── Short n' Sweet/
-│       └── 01 Espresso.lrc
+│       └── 07 Espresso.lrc
 └── OCT/
     └── On Company Time/
-        └── 01 POP! POP!.lrc
+        └── 03 POP! POP!.lrc
 ```
 
 ### Singles vs albums
