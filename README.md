@@ -1,5 +1,7 @@
 # multiplatform-lyric-downloader
 
+**AI DISCLAIMER: Claude Code was used for assistance in this project.**
+
 Download synced (timestamped) `.lrc` lyric files from Spotify, Deezer, Musixmatch, LRCLIB, and YouTube — organized into `Artist\Album\Track.lrc` folders compatible with MusicBee, Plex, Kodi, Poweramp, and most LRC-aware players.
 
 > **Migrating from [spotify-lyric-downloader](https://github.com/tappyduckmancodes/spotify-lyric-downloader)?**
